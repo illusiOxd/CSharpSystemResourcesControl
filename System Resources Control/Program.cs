@@ -367,38 +367,28 @@
                     WriteLine("6. System Summary");
                     WriteLine("7. Temperature Information");
                     WriteLine("8. Exit");
-                    int option = int.Parse(ReadLine());
-
-                    switch (option)
+                    WriteLine("Enter your choice (1-8):");
+                    var optionActions = new Dictionary<int, Action>
                     {
-                        case 1:
-                            GetCpuInformation();
-                            break;
-                        case 2:
-                            GetGpuInformation();
-                            break;
-                        case 3:
-                            GetRamInformation();
-                            break;
-                        case 4:
-                            GetDiskInformation();
-                            break;
-                        case 5:
-                            GetNetworkInformation();
-                            break;
-                        case 6:
-                            GetSystemSummary();
-                            break;
-                        case 7:
-                            GetTemperatureInformation();
-                            break;
-                        case 8:
-                            isStopped = true;
-                            WriteLine("Program terminated.");
-                            break;
-                        default:
-                            WriteLine("Invalid option. Please choose again.");
-                            break;
+                        { 1, GetCpuInformation },
+                        { 2, GetGpuInformation },
+                        { 3, GetRamInformation },
+                        { 4, GetDiskInformation },
+                        { 5, GetNetworkInformation },
+                        { 6, GetSystemSummary },
+                        { 7, GetTemperatureInformation },
+                        { 8, () => { isStopped = true; WriteLine("Program terminated."); } }
+                    };
+                    
+                    int option = int.Parse(ReadLine());
+                    
+                    if (optionActions.ContainsKey(option))
+                    {
+                        optionActions[option]();
+                    }
+                    else
+                    {
+                        WriteLine("Invalid option. Please choose again.");
                     }
                 }
                 catch (Exception ex)
