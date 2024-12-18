@@ -78,9 +78,6 @@ Contributions are welcome! Please follow these steps:
 2. Create a new branch for your feature or bug fix.
 3. Submit a pull request with a detailed explanation of your changes.
 
-## License
-This project is licensed under the MIT License. See the LICENSE file for details.
-
 ## Acknowledgments
 - [Microsoft Documentation](https://docs.microsoft.com/) for information on WMI and system management.
 - Inspiration from performance monitoring and benchmarking tools.
