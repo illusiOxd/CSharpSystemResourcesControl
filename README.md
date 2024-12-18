@@ -15,7 +15,7 @@ System Resources Control is a console-based application written in C#. It provid
 ## Installation
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/SystemResourcesControl.git
+   git clone https://github.com/illusiOxd/CSharpSystemResourcesControl.git
    ```
 2. Open the project in Visual Studio or your preferred IDE.
 3. Build the project to restore dependencies and compile the application.
