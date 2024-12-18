@@ -120,13 +120,13 @@
 
             int threadCount = Environment.ProcessorCount;
             double[] threadScores = new double[threadCount];
-            object lockObject = new object(); // Синхронизация доступа к общим данным
+            object lockObject = new object(); 
 
             Stopwatch stopwatch = Stopwatch.StartNew();
 
             Parallel.For(0, threadCount, i =>
             {
-                threadScores[i] = SimulateHeavyWorkload(i); // Параллельный расчет
+                threadScores[i] = SimulateHeavyWorkload(i); 
             });
 
             stopwatch.Stop();
@@ -136,7 +136,7 @@
             {
                 lock (lockObject)
                 {
-                    totalScore += CalculateScore(score, stopwatch.Elapsed); // Синхронно обновляем итог
+                    totalScore += CalculateScore(score, stopwatch.Elapsed); 
                 }
             }
 
@@ -162,16 +162,12 @@
 
         static int CalculateScore(double threadScore, TimeSpan elapsedTime)
         {
-            // Base score based on threadScore (inversely proportional)
             double baseScore = 10000.0 / (1 + threadScore / 1000.0); 
-
-            // Time bonus (higher score for faster completion)
-            double timeBonus = 10000.0 / (elapsedTime.TotalMilliseconds + 1); // Avoid division by zero
-
-            // Combine base score and time bonus
+            
+            double timeBonus = 10000.0 / (elapsedTime.TotalMilliseconds + 1); 
+            
             double totalScore = baseScore + timeBonus;
-
-            // Ensure non-negative score
+            
             return Math.Max(0, (int)totalScore); 
         }
 
@@ -205,7 +201,80 @@
                 WriteLine($"Error fetching GPU info: {ex.Message}");
             }
         }
+        
+        static void GetRamInformation()
+        {
+            try
+            {
+                var searcher = new ManagementObjectSearcher("select * from Win32_PhysicalMemory");
+                
+                long totalCapacity = 0;
+                foreach (ManagementObject obj in searcher.Get())
+                {
+                    totalCapacity += Convert.ToInt64(obj["Capacity"]);
+                }
 
+                WriteLine("\n--- RAM Information ---");
+                WriteLine($"Total Installed RAM: {totalCapacity / (1024 * 1024 * 1024)} GB\n");
+                
+                int moduleNumber = 1;
+                foreach (ManagementObject obj in searcher.Get())
+                {
+                    WriteLine($"Module {moduleNumber++}:");
+                    WriteLine($"  Capacity: {Convert.ToInt64(obj["Capacity"]) / (1024 * 1024 * 1024)} GB");
+                    WriteLine($"  Manufacturer: {obj["Manufacturer"]}");
+                    WriteLine($"  Speed: {obj["Speed"]} MHz");
+                    WriteLine($"  Part Number: {obj["PartNumber"]}\n");
+                }
+            }
+            catch (Exception ex)
+            {
+                WriteLine($"Error fetching RAM info: {ex.Message}");
+            }
+        }
+
+
+        static void GetDiskInformation()
+        {
+            try
+            {
+                var searcher = new ManagementObjectSearcher("select * from Win32_DiskDrive");
+                WriteLine("\n--- Disk Information ---");
+
+                foreach (ManagementObject obj in searcher.Get())
+                {
+                    WriteLine($"Model: {obj["Model"]}");
+                    WriteLine($"Interface Type: {obj["InterfaceType"]}");
+                    WriteLine($"Size: {Convert.ToInt64(obj["Size"]) / (1024 * 1024 * 1024)} GB");
+                    WriteLine($"Media Type: {obj["MediaType"]}");
+                }
+            }
+            catch (Exception ex)
+            {
+                WriteLine($"Error fetching Disk info: {ex.Message}");
+            }
+        }
+        
+        static void GetNetworkInformation()
+        {
+            try
+            {
+                var searcher = new ManagementObjectSearcher("select * from Win32_NetworkAdapter where NetEnabled = true");
+                WriteLine("\n--- Network Information ---");
+
+                foreach (ManagementObject obj in searcher.Get())
+                {
+                    WriteLine($"Name: {obj["Name"]}");
+                    WriteLine($"MAC Address: {obj["MACAddress"]}");
+                    WriteLine($"Speed: {obj["Speed"]} bps");
+                }
+            }
+            catch (Exception ex)
+            {
+                WriteLine($"Error fetching Network info: {ex.Message}");
+            }
+        }
+        
         static void Main(string[] args)
         {
             bool isStopped = false;
@@ -216,9 +285,12 @@
                 {
                     WriteLine("------- System Resources Control -------");
                     WriteLine("Select an option:");
-                    WriteLine("1. CPU information");
-                    WriteLine("2. GPU information (not finished) ");
-                    WriteLine("3. Exit");
+                    WriteLine("1. CPU Information");
+                    WriteLine("2. GPU Information");
+                    WriteLine("3. RAM Information");
+                    WriteLine("4. Disk Information");
+                    WriteLine("5. Network Information");
+                    WriteLine("6. Exit");
                     int option = int.Parse(ReadLine());
 
                     switch (option)
@@ -230,6 +302,15 @@
                             GetGpuInformation();
                             break;
                         case 3:
+                            GetRamInformation();
+                            break;
+                        case 4:
+                            GetDiskInformation();
+                            break;
+                        case 5:
+                            GetNetworkInformation();
+                            break;
+                        case 6:
                             isStopped = true;
                             WriteLine("Program terminated.");
                             break;
