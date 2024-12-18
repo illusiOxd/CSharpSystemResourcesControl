@@ -120,12 +120,18 @@
 
             int threadCount = Environment.ProcessorCount;
             Thread[] threads = new Thread[threadCount];
+            int totalScore = 0;
+
             Stopwatch stopwatch = Stopwatch.StartNew();
 
             for (int i = 0; i < threadCount; i++)
             {
                 int threadIndex = i;
-                threads[i] = new Thread(() => SimulateHeavyWorkload(threadIndex));
+                threads[i] = new Thread(() =>
+                {
+                    double threadScore = SimulateHeavyWorkload(threadIndex);
+                    totalScore += CalculateScore(threadScore, stopwatch.Elapsed); 
+                });
                 threads[i].Start();
             }
 
@@ -136,18 +142,39 @@
 
             stopwatch.Stop();
             WriteLine($"\nBenchmark completed in {stopwatch.ElapsedMilliseconds} ms.");
+            WriteLine($"Total Score: {totalScore} points");
         }
 
-        static void SimulateHeavyWorkload(int threadIndex)
+        static double SimulateHeavyWorkload(int threadIndex)
         {
             double result = 0;
-            for (int i = 0; i < 10_000_000; i++)
+            const int iterations = 20_000_000;
+
+            for (int i = 1; i <= iterations; i++)
             {
                 result += Math.Sqrt(i) * Math.Sin(i);
             }
 
-            WriteLine($"Thread {threadIndex} completed.");
+            double threadScore = result / 1_000_000;
+            WriteLine($"Thread {threadIndex} completed with score {threadScore:F2}");
+            return threadScore;
         }
+
+        static int CalculateScore(double threadScore, TimeSpan elapsedTime)
+        {
+            // Base score based on threadScore (inversely proportional)
+            double baseScore = 10000.0 / (1 + threadScore / 1000.0); 
+
+            // Time bonus (higher score for faster completion)
+            double timeBonus = 10000.0 / (elapsedTime.TotalMilliseconds + 1); // Avoid division by zero
+
+            // Combine base score and time bonus
+            double totalScore = baseScore + timeBonus;
+
+            // Ensure non-negative score
+            return Math.Max(0, (int)totalScore); 
+        }
+
 
         static void GetGpuInformation()
         {
