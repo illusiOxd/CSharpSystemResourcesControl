@@ -119,36 +119,36 @@
             WriteLine("Simulating heavy workload on all cores and threads...\n");
 
             int threadCount = Environment.ProcessorCount;
-            Thread[] threads = new Thread[threadCount];
-            int totalScore = 0;
+            double[] threadScores = new double[threadCount];
+            object lockObject = new object(); // Синхронизация доступа к общим данным
 
             Stopwatch stopwatch = Stopwatch.StartNew();
 
-            for (int i = 0; i < threadCount; i++)
+            Parallel.For(0, threadCount, i =>
             {
-                int threadIndex = i;
-                threads[i] = new Thread(() =>
-                {
-                    double threadScore = SimulateHeavyWorkload(threadIndex);
-                    totalScore += CalculateScore(threadScore, stopwatch.Elapsed); 
-                });
-                threads[i].Start();
-            }
-
-            foreach (var thread in threads)
-            {
-                thread.Join();
-            }
+                threadScores[i] = SimulateHeavyWorkload(i); // Параллельный расчет
+            });
 
             stopwatch.Stop();
+
+            double totalScore = 0;
+            foreach (var score in threadScores)
+            {
+                lock (lockObject)
+                {
+                    totalScore += CalculateScore(score, stopwatch.Elapsed); // Синхронно обновляем итог
+                }
+            }
+
             WriteLine($"\nBenchmark completed in {stopwatch.ElapsedMilliseconds} ms.");
-            WriteLine($"Total Score: {totalScore} points");
+            WriteLine($"Total Score: {totalScore:F2} points");
         }
+
 
         static double SimulateHeavyWorkload(int threadIndex)
         {
             double result = 0;
-            const int iterations = 20_000_000;
+            const int iterations = 100_000_000;
 
             for (int i = 1; i <= iterations; i++)
             {
