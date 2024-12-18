@@ -1,6 +1,6 @@
 # System Resources Control
 
-System Resources Control is a console-based application written in C#. It provides detailed information and monitoring capabilities for system resources, including CPU, GPU, RAM, and storage devices, along with a CPU benchmarking tool.
+System Resources Control is a console-based application written in C#. It provides detailed information and monitoring capabilities for system resources, including CPU, GPU, RAM, storage devices, and temperatures, along with a CPU benchmarking tool.
 
 ## Features
 
@@ -19,6 +19,12 @@ System Resources Control is a console-based application written in C#. It provid
 ### Disk Information
 - Retrieves details about installed storage devices, including capacity, model, and available space.
 
+### Temperature Information
+- **System-Wide Temperatures**: Displays the temperature readings for various components, including CPU and GPU, if available.
+
+### System Overview
+- **Summary Output**: Provides a concise overview of the system, including CPU, GPU, RAM, storage, and temperature data.
+
 ## Installation
 1. Clone the repository:
    ```bash
@@ -35,7 +41,9 @@ System Resources Control is a console-based application written in C#. It provid
    - `2`: GPU Information
    - `3`: RAM Information
    - `4`: Disk Information
-   - `5`: Exit the program
+   - `5`: Temperature Information
+   - `6`: System Overview
+   - `7`: Exit the program
 
 ### CPU Information Menu
 - Select `1` for detailed CPU information.
@@ -53,9 +61,16 @@ System Resources Control is a console-based application written in C#. It provid
 ### Disk Information Menu
 - Displays details about storage devices, including model, total capacity, and free space available.
 
+### Temperature Information Menu
+- Displays temperature readings for various system components. If access is denied, ensure the application is running with administrator privileges.
+
+### System Overview Menu
+- Provides a summary of all key system details in a concise format.
+
 ## Requirements
 - .NET Framework or .NET Core (compatible version for C# projects)
 - Windows OS (uses WMI for hardware queries)
+- Administrator privileges for temperature monitoring
 
 ## How the CPU Benchmark Works
 The benchmark uses all available CPU cores to perform a heavy mathematical workload. Each core's performance is measured and combined into a total score. The workload involves:
@@ -76,7 +91,9 @@ Select an option:
 2. GPU information
 3. RAM information
 4. Disk information
-5. Exit
+5. Temperature information
+6. System overview
+7. Exit
 ```
 
 ### RAM Information
@@ -97,6 +114,25 @@ Module 2:
   Part Number: CMK16GX4M2B3200C16
 ```
 
+### Temperature Information
+```
+--- Temperature Information ---
+Device: CPU0 - Temperature: 45.2 °C
+Device: GPU0 - Temperature: 50.5 °C
+```
+
+### System Overview
+```
+--- System Overview ---
+CPU: Intel Core i7-9700K @ 3.60 GHz
+GPU: NVIDIA GeForce GTX 1080
+Total RAM: 16 GB
+Disk: Samsung SSD 970 EVO Plus 1TB - 850 GB free of 1TB
+Temperatures:
+  CPU: 45.2 °C
+  GPU: 50.5 °C
+```
+
 ## Contributing
 Contributions are welcome! Please follow these steps:
 1. Fork the repository.
@@ -105,6 +141,7 @@ Contributions are welcome! Please follow these steps:
 
 ## Acknowledgments
 - [Microsoft Documentation](https://docs.microsoft.com/) for information on WMI and system management.
+- [OpenHardwareMonitor](https://github.com/openhardwaremonitor/openhardwaremonitor) for inspiration on monitoring hardware sensors.
 - Inspiration from performance monitoring and benchmarking tools.
 
 ---
