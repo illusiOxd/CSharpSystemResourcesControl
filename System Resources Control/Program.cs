@@ -20,7 +20,8 @@
                     WriteLine("Select an option:");
                     WriteLine("1. Detailed Processor Info");
                     WriteLine("2. Monitor CPU Core Usage");
-                    WriteLine("3. Go Back");
+                    WriteLine("3. Run CPU Benchmark");
+                    WriteLine("4. Go Back");
                     int option = int.Parse(ReadLine());
 
                     switch (option)
@@ -32,6 +33,9 @@
                             DisplayCoreFrequency();
                             break;
                         case 3:
+                            RunCpuBenchmark();
+                            break;
+                        case 4:
                             isStopped = true;
                             break;
                         default:
@@ -109,6 +113,42 @@
             }
         }
 
+        static void RunCpuBenchmark()
+        {
+            WriteLine("\n--- CPU Benchmark ---");
+            WriteLine("Simulating heavy workload on all cores and threads...\n");
+
+            int threadCount = Environment.ProcessorCount;
+            Thread[] threads = new Thread[threadCount];
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
+            for (int i = 0; i < threadCount; i++)
+            {
+                int threadIndex = i;
+                threads[i] = new Thread(() => SimulateHeavyWorkload(threadIndex));
+                threads[i].Start();
+            }
+
+            foreach (var thread in threads)
+            {
+                thread.Join();
+            }
+
+            stopwatch.Stop();
+            WriteLine($"\nBenchmark completed in {stopwatch.ElapsedMilliseconds} ms.");
+        }
+
+        static void SimulateHeavyWorkload(int threadIndex)
+        {
+            double result = 0;
+            for (int i = 0; i < 10_000_000; i++)
+            {
+                result += Math.Sqrt(i) * Math.Sin(i);
+            }
+
+            WriteLine($"Thread {threadIndex} completed.");
+        }
+
         static void GetGpuInformation()
         {
             try
@@ -120,7 +160,6 @@
                     WriteLine("\n--- GPU Information ---");
                     WriteLine($"GPU Name: {obj["Name"]}");
 
-                    // Используем long для обработки большого объема памяти
                     if (obj["AdapterRAM"] != null && long.TryParse(obj["AdapterRAM"].ToString(), out long adapterRam))
                     {
                         WriteLine($"Adapter RAM: {adapterRam / (1024 * 1024)} MB");
