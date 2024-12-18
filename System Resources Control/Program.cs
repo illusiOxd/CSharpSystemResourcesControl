@@ -275,6 +275,80 @@
             }
         }
         
+        static void GetSystemSummary()
+        {
+            try
+            {
+                WriteLine("\n--- System Summary ---");
+
+                // Fetch CPU details
+                var cpuSearcher = new ManagementObjectSearcher("select * from Win32_Processor");
+                foreach (ManagementObject obj in cpuSearcher.Get())
+                {
+                    WriteLine($"CPU: {obj["Name"]} - {obj["NumberOfCores"]} Cores, {obj["NumberOfLogicalProcessors"]} Threads");
+                }
+
+                // Fetch RAM details
+                var ramSearcher = new ManagementObjectSearcher("select * from Win32_PhysicalMemory");
+                long totalRam = 0;
+                foreach (ManagementObject obj in ramSearcher.Get())
+                {
+                    totalRam += Convert.ToInt64(obj["Capacity"]);
+                }
+                WriteLine($"RAM: {totalRam / (1024 * 1024 * 1024)} GB Total");
+
+                // Fetch GPU details
+                var gpuSearcher = new ManagementObjectSearcher("select * from Win32_VideoController");
+                foreach (ManagementObject obj in gpuSearcher.Get())
+                {
+                    WriteLine($"GPU: {obj["Name"]} - {obj["AdapterRAM"]} bytes of Memory");
+                }
+
+                // Fetch Disk details
+                var diskSearcher = new ManagementObjectSearcher("select * from Win32_DiskDrive");
+                foreach (ManagementObject obj in diskSearcher.Get())
+                {
+                    WriteLine($"Disk: {obj["Model"]} - {obj["Size"]} bytes Capacity");
+                }
+            }
+            catch (Exception ex)
+            {
+                WriteLine($"Error fetching system summary: {ex.Message}");
+            }
+        }
+        
+        static void GetTemperatureInformation()
+        {
+            try
+            {
+                var searcher = new ManagementObjectSearcher("root\\WMI", "SELECT * FROM MSAcpi_ThermalZoneTemperature");
+                WriteLine("\n--- Temperature Information ---");
+
+                bool hasTemperatureData = false;
+
+                foreach (ManagementObject obj in searcher.Get())
+                {
+                    double tempKelvin = Convert.ToDouble(obj["CurrentTemperature"]);
+                    double tempCelsius = (tempKelvin - 2732) / 10.0;
+                    WriteLine($"Device: {obj["InstanceName"]} - Temperature: {tempCelsius:F1} °C");
+                    hasTemperatureData = true;
+                }
+
+                if (!hasTemperatureData)
+                {
+                    WriteLine("No temperature data available. Please ensure you are running the application as an administrator.");
+                }
+            }
+            catch (UnauthorizedAccessException)
+            {
+                WriteLine("Access denied. Please run the application as an administrator to access temperature information.");
+            }
+            catch (Exception ex)
+            {
+                WriteLine($"Error fetching temperature information: {ex.Message}");
+            }
+        }
+        
         static void Main(string[] args)
         {
             bool isStopped = false;
@@ -290,7 +364,9 @@
                     WriteLine("3. RAM Information");
                     WriteLine("4. Disk Information");
                     WriteLine("5. Network Information");
-                    WriteLine("6. Exit");
+                    WriteLine("6. System Summary");
+                    WriteLine("7. Temperature Information");
+                    WriteLine("8. Exit");
                     int option = int.Parse(ReadLine());
 
                     switch (option)
@@ -311,6 +387,12 @@
                             GetNetworkInformation();
                             break;
                         case 6:
+                            GetSystemSummary();
+                            break;
+                        case 7:
+                            GetTemperatureInformation();
+                            break;
+                        case 8:
                             isStopped = true;
                             WriteLine("Program terminated.");
                             break;
