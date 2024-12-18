@@ -1,6 +1,6 @@
 # System Resources Control
 
-System Resources Control is a console-based application written in C#. It provides detailed information and monitoring capabilities for system resources, including CPU and GPU, along with a CPU benchmarking tool.
+System Resources Control is a console-based application written in C#. It provides detailed information and monitoring capabilities for system resources, including CPU, GPU, RAM, and storage devices, along with a CPU benchmarking tool.
 
 ## Features
 
@@ -11,6 +11,13 @@ System Resources Control is a console-based application written in C#. It provid
 
 ### GPU Information
 - Fetches details about the installed GPU, including name, adapter RAM, driver version, and video processor.
+
+### RAM Information
+- **Overall RAM Details**: Displays the total installed RAM in the system.
+- **Per-Module Details**: Lists detailed information for each RAM module, including capacity, manufacturer, speed, and part number.
+
+### Disk Information
+- Retrieves details about installed storage devices, including capacity, model, and available space.
 
 ## Installation
 1. Clone the repository:
@@ -26,7 +33,9 @@ System Resources Control is a console-based application written in C#. It provid
 2. Use the menu to navigate through the options:
    - `1`: CPU Information
    - `2`: GPU Information
-   - `3`: Exit the program
+   - `3`: RAM Information
+   - `4`: Disk Information
+   - `5`: Exit the program
 
 ### CPU Information Menu
 - Select `1` for detailed CPU information.
@@ -36,6 +45,13 @@ System Resources Control is a console-based application written in C#. It provid
 
 ### GPU Information Menu
 - Displays detailed information about the installed GPU.
+
+### RAM Information Menu
+- Shows total installed RAM in the system.
+- Lists detailed information for each memory module, with numbered entries for easier identification.
+
+### Disk Information Menu
+- Displays details about storage devices, including model, total capacity, and free space available.
 
 ## Requirements
 - .NET Framework or .NET Core (compatible version for C# projects)
@@ -58,18 +74,27 @@ The benchmark uses all available CPU cores to perform a heavy mathematical workl
 Select an option:
 1. CPU information
 2. GPU information
-3. Exit
+3. RAM information
+4. Disk information
+5. Exit
 ```
 
-### CPU Benchmark
+### RAM Information
 ```
---- CPU Benchmark ---
-Simulating heavy workload on all cores and threads...
-Thread 0 completed with score 12.34
-Thread 1 completed with score 11.56
-...
-Benchmark completed in 1500 ms.
-Total Score: 250.78 points
+--- RAM Information ---
+Total Installed RAM: 16 GB
+
+Module 1:
+  Capacity: 8 GB
+  Manufacturer: Corsair
+  Speed: 3200 MHz
+  Part Number: CMK16GX4M2B3200C16
+
+Module 2:
+  Capacity: 8 GB
+  Manufacturer: Corsair
+  Speed: 3200 MHz
+  Part Number: CMK16GX4M2B3200C16
 ```
 
 ## Contributing
