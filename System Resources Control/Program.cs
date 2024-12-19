@@ -8,6 +8,31 @@ using System.Threading.Tasks;
 
 namespace System.Resources.Control
 {
+    public interface IController
+    {
+        void ShowMainScreen();
+        void ShowInvalidOptionMessage();
+        void ShowErrorMessage(string message);
+        void ShowProgramTerminationMessage();
+        void ShowRestartingMessage();
+        void AskToContinue();
+        Dictionary<int, Action> OptionActions { get; }
+    }
+    
+    public interface ISystemInfoService
+    {
+        CpuInfo GetDetailedCpuInfo();
+        List<GpuInfo> GetGpuInfo();
+        RamInfo GetRamInfo();
+        List<DiskInfo> GetDiskInfo();
+        List<NetworkInfo> GetNetworkInfo();
+        SystemSummaryCpuInfo GetSystemSummaryCpuInfo();
+        SystemSummaryRamInfo GetSystemSummaryRamInfo();
+        SystemSummaryGpuInfo GetSystemSummaryGpuInfo();
+        SystemSummaryDiskInfo GetSystemSummaryDiskInfo();
+         TemperatureInfo GetTemperatureInfo();
+
+    }
     public class Program
     {
         private readonly IController _controller;
@@ -19,7 +44,6 @@ namespace System.Resources.Control
 
         static void Main()
         {
-            
             var view = new ConsoleView();
             var systemInfoService = new SystemInfoService();
             var model = new Model(systemInfoService);
@@ -198,23 +222,22 @@ namespace System.Resources.Control
             Console.WriteLine(message);
         }
     }
-
-
+    
     public class Controller : IController
     {
         private readonly IModel _model;
         private readonly IView _view;
-        private readonly Dictionary<int, Action> _optionActions;
         private readonly ISystemInfoService _systemInfoService;
+        public Dictionary<int, Action> OptionActions { get; }
+         private Dictionary<int, Action> _cpuOptionActions;
 
-        public Dictionary<int, Action> OptionActions => _optionActions;
 
         public Controller(IModel model, IView view)
         {
             _model = model;
             _view = view;
             _systemInfoService = new SystemInfoService();
-            _optionActions = new Dictionary<int, Action>
+            OptionActions = new Dictionary<int, Action>
         {
             { 1, ShowCpuInformation },
             { 2, ShowGpuInformation },
@@ -227,41 +250,23 @@ namespace System.Resources.Control
         };
         }
 
-        public void ShowMainScreen()
-        {
-            _view.ShowMainScreen();
-        }
-
-        public void ShowInvalidOptionMessage()
-        {
-            _view.ShowInvalidOptionMessage();
-        }
-
-        public void ShowErrorMessage(string message)
-        {
-            _view.ShowErrorMessage(message);
-        }
-
-        public void ShowProgramTerminationMessage()
-        {
-            _view.ShowProgramTerminationMessage();
-        }
-
-        public void ShowRestartingMessage()
-        {
-            _view.ShowRestartingMessage();
-        }
-
-        public void AskToContinue()
-        {
-            _view.AskToContinue();
-        }
-
+        public void ShowMainScreen() => _view.ShowMainScreen();
+        public void ShowInvalidOptionMessage() => _view.ShowInvalidOptionMessage();
+        public void ShowErrorMessage(string message) => _view.ShowErrorMessage(message);
+        public void ShowProgramTerminationMessage() => _view.ShowProgramTerminationMessage();
+        public void ShowRestartingMessage() => _view.ShowRestartingMessage();
+        public void AskToContinue() => _view.AskToContinue();
 
         private void ShowCpuInformation()
         {
-            bool isStopped = false;
+           _cpuOptionActions = new Dictionary<int, Action>
+            {
+              { 1, DisplayDetailedCpuInfo },
+              { 2, DisplayCoreFrequency },
+              { 3, RunCpuBenchmark }
+            };
 
+            bool isStopped = false;
             while (!isStopped)
             {
                 try
@@ -272,33 +277,19 @@ namespace System.Resources.Control
                     _view.DisplayMessage("2. Monitor CPU Core Usage");
                     _view.DisplayMessage("3. Run CPU Benchmark");
                     _view.DisplayMessage("4. Go Back");
-
-
                     if (int.TryParse(Console.ReadLine(), out int option))
-                    {
-                        switch (option)
-                        {
-                            case 1:
-                                DisplayDetailedCpuInfo();
-                                break;
-                            case 2:
-                                DisplayCoreFrequency();
-                                break;
-                            case 3:
-                                RunCpuBenchmark();
-                                break;
-                            case 4:
-                                isStopped = true;
-                                break;
-                            default:
-                                _view.ShowInvalidOptionMessage();
-                                break;
+                     {
+                         if (_cpuOptionActions.TryGetValue(option, out var action))
+                             action();
+                         else if(option == 4)
+                                 isStopped = true;
+                         else
+                               _view.ShowInvalidOptionMessage();
                         }
-                    }
                     else
-                    {
+                     {
                         _view.ShowInvalidOptionMessage();
-                    }
+                     }
                 }
                 catch (Exception ex)
                 {
@@ -333,77 +324,55 @@ namespace System.Resources.Control
         
         private void DisplayCoreFrequency()
         {
-            int threadCount = Environment.ProcessorCount;
-            PerformanceCounter[] threadCounters = new PerformanceCounter[threadCount];
-
-            for (int i = 0; i < threadCount; i++)
-            {
-                threadCounters[i] = new PerformanceCounter("Processor", "% Processor Time", i.ToString());
-            }
+            var threadCounters = Enumerable.Range(0, Environment.ProcessorCount)
+                .Select(i => new PerformanceCounter("Processor", "% Processor Time", i.ToString())).ToArray();
 
             Console.Clear();
             _view.DisplayMessage("--- CPU core usage monitoring ---");
             _view.DisplayMessage("Press 'q' to stop monitoring.\n");
-
+                
             while (!Console.KeyAvailable || Console.ReadKey(true).Key != ConsoleKey.Q)
             {
-                Console.Clear();
+               Console.Clear();
                 _view.DisplayMessage("--- CPU core usage monitoring ---");
-                _view.DisplayMessage("Press 'q' to stop monitoring.\n");
+               _view.DisplayMessage("Press 'q' to stop monitoring.\n");
 
-                for (int i = 0; i < threadCount; i++)
-                {
-                    _view.DisplayMessage($"Thread {i}: {threadCounters[i].NextValue():F2}%");
-                }
-
-                Thread.Sleep(500);
+                 foreach (var counter in threadCounters)
+                    _view.DisplayMessage($"Thread {Array.IndexOf(threadCounters, counter)}: {counter.NextValue():F2}%");
+                 
+                 Thread.Sleep(500);
             }
-
+                
             foreach (var counter in threadCounters)
-            {
                 counter.Dispose();
-            }
         }
-
         private void RunCpuBenchmark()
         {
             _view.DisplayMessage("\n--- CPU Benchmark ---");
             _view.DisplayMessage("Simulating heavy workload on all cores and threads...\n");
-
+                
             int threadCount = Environment.ProcessorCount;
             double[] threadScores = new double[threadCount];
-            object lockObject = new object();
-
-            Stopwatch stopwatch = Stopwatch.StartNew();
+                Stopwatch stopwatch = Stopwatch.StartNew();
 
             Parallel.For(0, threadCount, i =>
             {
                 threadScores[i] = _model.SimulateHeavyWorkload(i);
-                  _view.DisplayMessage($"Thread {i} completed with score {threadScores[i]:F2}");
+                    _view.DisplayMessage($"Thread {i} completed with score {threadScores[i]:F2}");
             });
+                stopwatch.Stop();
 
-            stopwatch.Stop();
+            double totalScore = threadScores.Sum(score => _model.CalculateScore(score, stopwatch.Elapsed));
 
-            double totalScore = 0;
-            foreach (var score in threadScores)
-            {
-                lock (lockObject)
-                {
-                    totalScore += _model.CalculateScore(score, stopwatch.Elapsed);
-                }
-            }
-            
-            _view.DisplayMessage($"\nBenchmark completed in {stopwatch.ElapsedMilliseconds} ms.");
-            _view.DisplayMessage($"Total Score: {totalScore:F2} points");
+             _view.DisplayMessage($"\nBenchmark completed in {stopwatch.ElapsedMilliseconds} ms.");
+             _view.DisplayMessage($"Total Score: {totalScore:F2} points");
         }
-    
-        private void ShowGpuInformation()
+
+         private void ShowGpuInformation()
         {
             try
             {
-                var gpuInfos = _systemInfoService.GetGpuInfo();
-
-                foreach (var gpuInfo in gpuInfos)
+                foreach (var gpuInfo in _systemInfoService.GetGpuInfo())
                 {
                     _view.DisplayMessage("\n--- GPU Information ---");
                     _view.DisplayMessage($"GPU Name: {gpuInfo.Name}");
@@ -417,25 +386,23 @@ namespace System.Resources.Control
                 _view.ShowErrorMessage($"Error fetching GPU info: {ex.Message}");
             }
         }
-        
+
         private void ShowRamInformation()
         {
             try
             {
                 var ramInfos = _systemInfoService.GetRamInfo();
-
                 _view.DisplayMessage("\n--- RAM Information ---");
                 _view.DisplayMessage($"Total Installed RAM: {ramInfos.TotalCapacity} GB\n");
-
-                int moduleNumber = 1;
-                foreach (var ramInfo in ramInfos.Modules)
-                {
-                    _view.DisplayMessage($"Module {moduleNumber++}:");
-                    _view.DisplayMessage($"  Capacity: {ramInfo.Capacity} GB");
-                    _view.DisplayMessage($"  Manufacturer: {ramInfo.Manufacturer}");
-                    _view.DisplayMessage($"  Speed: {ramInfo.Speed} MHz");
-                    _view.DisplayMessage($"  Part Number: {ramInfo.PartNumber}\n");
-                }
+                 int moduleNumber = 1;
+                 foreach (var ramInfo in ramInfos.Modules)
+                 {
+                   _view.DisplayMessage($"Module {moduleNumber++}:");
+                   _view.DisplayMessage($"  Capacity: {ramInfo.Capacity} GB");
+                   _view.DisplayMessage($"  Manufacturer: {ramInfo.Manufacturer}");
+                   _view.DisplayMessage($"  Speed: {ramInfo.Speed} MHz");
+                   _view.DisplayMessage($"  Part Number: {ramInfo.PartNumber}\n");
+                 }
             }
             catch (Exception ex)
             {
@@ -443,40 +410,34 @@ namespace System.Resources.Control
             }
         }
 
-
         public void ShowDiskInformation()
         {
             try
             {
-                var diskInfos = _systemInfoService.GetDiskInfo();
                 _view.DisplayMessage("\n--- Disk Information ---");
-
-                foreach (var diskInfo in diskInfos)
-                {
-                   _view.DisplayMessage($"Model: {diskInfo.Model}");
-                   _view.DisplayMessage($"Interface Type: {diskInfo.InterfaceType}");
-                    _view.DisplayMessage($"Size: {diskInfo.Size} GB");
-                   _view.DisplayMessage($"Media Type: {diskInfo.MediaType}");
-                }
+               foreach(var diskInfo in _systemInfoService.GetDiskInfo())
+               {
+                  _view.DisplayMessage($"Model: {diskInfo.Model}");
+                  _view.DisplayMessage($"Interface Type: {diskInfo.InterfaceType}");
+                  _view.DisplayMessage($"Size: {diskInfo.Size} GB");
+                  _view.DisplayMessage($"Media Type: {diskInfo.MediaType}");
+               }
             }
             catch (Exception ex)
             {
                 _view.ShowErrorMessage($"Error fetching Disk info: {ex.Message}");
             }
         }
-
         public void ShowNetworkInformation()
         {
-             try
+           try
             {
-                var networkInfos = _systemInfoService.GetNetworkInfo();
-                 _view.DisplayMessage("\n--- Network Information ---");
-
-                foreach (var networkInfo in networkInfos)
+                _view.DisplayMessage("\n--- Network Information ---");
+                foreach (var networkInfo in _systemInfoService.GetNetworkInfo())
                 {
-                    _view.DisplayMessage($"Name: {networkInfo.Name}");
-                    _view.DisplayMessage($"MAC Address: {networkInfo.MACAddress}");
-                    _view.DisplayMessage($"Speed: {networkInfo.Speed} bps");
+                   _view.DisplayMessage($"Name: {networkInfo.Name}");
+                   _view.DisplayMessage($"MAC Address: {networkInfo.MACAddress}");
+                   _view.DisplayMessage($"Speed: {networkInfo.Speed} bps");
                 }
             }
             catch (Exception ex)
@@ -484,24 +445,21 @@ namespace System.Resources.Control
                 _view.ShowErrorMessage($"Error fetching Network info: {ex.Message}");
             }
         }
-
-        public void ShowSystemSummary()
+         public void ShowSystemSummary()
         {
             try
             {
                 _view.DisplayMessage("\n--- System Summary ---");
-                
-                var cpuInfo = _systemInfoService.GetSystemSummaryCpuInfo();
+
+                 var cpuInfo = _systemInfoService.GetSystemSummaryCpuInfo();
                 _view.DisplayMessage($"CPU: {cpuInfo.Name} - {cpuInfo.NumberOfCores} Cores, {cpuInfo.NumberOfLogicalProcessors} Threads");
 
-
                 var ramInfo = _systemInfoService.GetSystemSummaryRamInfo();
-                _view.DisplayMessage($"RAM: {ramInfo.TotalRam} GB Total");
-
+                 _view.DisplayMessage($"RAM: {ramInfo.TotalRam} GB Total");
 
                 var gpuInfo = _systemInfoService.GetSystemSummaryGpuInfo();
-                _view.DisplayMessage($"GPU: {gpuInfo.Name} - {gpuInfo.AdapterRAM} bytes of Memory");
-                
+                 _view.DisplayMessage($"GPU: {gpuInfo.Name} - {gpuInfo.AdapterRAM} bytes of Memory");
+
                 var diskInfo = _systemInfoService.GetSystemSummaryDiskInfo();
                 _view.DisplayMessage($"Disk: {diskInfo.Model} - {diskInfo.Size} bytes Capacity");
             }
@@ -516,270 +474,144 @@ namespace System.Resources.Control
             try
             {
                 var temperatureInfo = _systemInfoService.GetTemperatureInfo();
-
                 _view.DisplayMessage("\n--- Temperature Information ---");
-                if (temperatureInfo.HasTemperatureData)
-                {
-                    _view.DisplayMessage($"Temperature: {temperatureInfo.TemperatureCelsius:F2}°C");
-                }
-                else
-                {
-                   _view.DisplayMessage("No temperature information available.");
-                }
+                _view.DisplayMessage(temperatureInfo.HasTemperatureData
+                    ? $"Temperature: {temperatureInfo.TemperatureCelsius:F2}°C"
+                    : "No temperature information available.");
             }
             catch (Exception ex)
             {
                 _view.ShowErrorMessage($"Error fetching Temperature info: {ex.Message}");
             }
         }
-
-
         public void TerminateProgram()
         {
             _view.DisplayMessage("Exiting program...");
             Environment.Exit(0);
         }
     }
-
-    public interface IController
+        public class SystemInfoService : ISystemInfoService
     {
-        void ShowMainScreen();
-        void ShowInvalidOptionMessage();
-        void ShowErrorMessage(string message);
-        void ShowProgramTerminationMessage();
-        void ShowRestartingMessage();
-        void AskToContinue();
-        Dictionary<int, Action> OptionActions { get; }
-    }
-    
-    public interface ISystemInfoService
-    {
-        CpuInfo GetDetailedCpuInfo();
-        List<GpuInfo> GetGpuInfo();
-        RamInfo GetRamInfo();
-        List<DiskInfo> GetDiskInfo();
-        List<NetworkInfo> GetNetworkInfo();
-        SystemSummaryCpuInfo GetSystemSummaryCpuInfo();
-        SystemSummaryRamInfo GetSystemSummaryRamInfo();
-        SystemSummaryGpuInfo GetSystemSummaryGpuInfo();
-        SystemSummaryDiskInfo GetSystemSummaryDiskInfo();
-         TemperatureInfo GetTemperatureInfo();
+         public CpuInfo GetDetailedCpuInfo() => GetManagementObject("Win32_Processor", obj => new CpuInfo
+         {
+            Name = obj["Name"]?.ToString(),
+            Manufacturer = obj["Manufacturer"]?.ToString(),
+            NumberOfCores = Convert.ToInt32(obj["NumberOfCores"]),
+            NumberOfLogicalProcessors = Convert.ToInt32(obj["NumberOfLogicalProcessors"]),
+            MaxClockSpeed = Convert.ToInt32(obj["MaxClockSpeed"]),
+            CurrentClockSpeed = Convert.ToInt32(obj["CurrentClockSpeed"]),
+            ProcessorId = obj["ProcessorId"]?.ToString(),
+            L2CacheSize = Convert.ToInt32(obj["L2CacheSize"]),
+            L3CacheSize = Convert.ToInt32(obj["L3CacheSize"]),
+            Architecture = obj["Architecture"]?.ToString(),
+            ProcessorType = obj["ProcessorType"]?.ToString(),
+            Status = obj["Status"]?.ToString()
+        });
+         public List<GpuInfo> GetGpuInfo() => GetManagementObjects("Win32_VideoController", obj =>
+         {
+             long.TryParse(obj["AdapterRAM"]?.ToString(), out long adapterRam);
+             return new GpuInfo
+             {
+                Name = obj["Name"]?.ToString(),
+                AdapterRAM = adapterRam == 0 ? "Not Available" : $"{adapterRam / (1024 * 1024)} MB",
+                DriverVersion = obj["DriverVersion"]?.ToString(),
+                VideoProcessor = obj["VideoProcessor"]?.ToString()
+            };
+         });
 
-    }
-    
-    public class SystemInfoService : ISystemInfoService
-    {
-        public CpuInfo GetDetailedCpuInfo()
-        {
-            try
-            {
-                var searcher = new ManagementObjectSearcher("select * from Win32_Processor");
-                var obj = searcher.Get().Cast<ManagementObject>().FirstOrDefault();
-
-                return obj == null
-                    ? new CpuInfo()
-                    : new CpuInfo
-                    {
-                        Name = obj["Name"]?.ToString(),
-                        Manufacturer = obj["Manufacturer"]?.ToString(),
-                        NumberOfCores = Convert.ToInt32(obj["NumberOfCores"]),
-                        NumberOfLogicalProcessors = Convert.ToInt32(obj["NumberOfLogicalProcessors"]),
-                        MaxClockSpeed = Convert.ToInt32(obj["MaxClockSpeed"]),
-                        CurrentClockSpeed = Convert.ToInt32(obj["CurrentClockSpeed"]),
-                        ProcessorId = obj["ProcessorId"]?.ToString(),
-                        L2CacheSize = Convert.ToInt32(obj["L2CacheSize"]),
-                        L3CacheSize = Convert.ToInt32(obj["L3CacheSize"]),
-                        Architecture = obj["Architecture"]?.ToString(),
-                        ProcessorType = obj["ProcessorType"]?.ToString(),
-                        Status = obj["Status"]?.ToString()
-                    };
-            }
-            catch (Exception)
-            {
-                return new CpuInfo();
-            }
-        }
-
-
-        public List<GpuInfo> GetGpuInfo()
-        {
-            try
-            {
-                var searcher = new ManagementObjectSearcher("select * from Win32_VideoController");
-                var gpuInfos = new List<GpuInfo>();
-                 
-                foreach (ManagementObject obj in searcher.Get())
-                {
-                    long adapterRam = 0;
-                    if (obj["AdapterRAM"] != null && long.TryParse(obj["AdapterRAM"].ToString(), out long ram))
-                    {
-                         adapterRam = ram / (1024 * 1024);
-                    }
-
-                  gpuInfos.Add(new GpuInfo
-                  {
-                      Name = obj["Name"]?.ToString(),
-                      AdapterRAM = adapterRam == 0 ? "Not Available" : $"{adapterRam} MB",
-                      DriverVersion = obj["DriverVersion"]?.ToString(),
-                      VideoProcessor = obj["VideoProcessor"]?.ToString()
-                  });
-                 }
-                return gpuInfos;
-            }
-            catch (Exception)
-            {
-              return new List<GpuInfo>();
-            }
-        }
-
-
-        public RamInfo GetRamInfo()
-        {
-            try
-            {
-                var searcher = new ManagementObjectSearcher("select * from Win32_PhysicalMemory");
-                long totalCapacity = 0;
-                var modules = new List<RamModuleInfo>();
-
-                foreach (ManagementObject obj in searcher.Get())
-                {
-                    totalCapacity += Convert.ToInt64(obj["Capacity"]);
-                    modules.Add(new RamModuleInfo
-                    {
+         public RamInfo GetRamInfo()
+         {
+            return GetManagementObject("Win32_PhysicalMemory", objCollection =>
+           {
+               long totalCapacity = 0;
+               var modules = new List<RamModuleInfo>();
+               foreach (var obj in objCollection)
+               {
+                   totalCapacity += Convert.ToInt64(obj["Capacity"]);
+                   modules.Add(new RamModuleInfo
+                   {
                        Capacity = Convert.ToInt64(obj["Capacity"]) / (1024 * 1024 * 1024),
                        Manufacturer = obj["Manufacturer"]?.ToString(),
                        Speed = Convert.ToInt32(obj["Speed"]),
                        PartNumber = obj["PartNumber"]?.ToString()
-                    });
-                }
+                   });
+               }
+               return new RamInfo
+               {
+                   TotalCapacity = totalCapacity / (1024 * 1024 * 1024),
+                   Modules = modules
+               };
+           });
+         }
 
-                return new RamInfo
+        public List<DiskInfo> GetDiskInfo() => GetManagementObjects("Win32_DiskDrive", obj => new DiskInfo
+        {
+            Model = obj["Model"]?.ToString(),
+            InterfaceType = obj["InterfaceType"]?.ToString(),
+            Size = Convert.ToInt64(obj["Size"]) / (1024 * 1024 * 1024),
+            MediaType = obj["MediaType"]?.ToString()
+        });
+        public List<NetworkInfo> GetNetworkInfo() => GetManagementObjects("Win32_NetworkAdapter where NetEnabled = true", obj => new NetworkInfo
+        {
+            Name = obj["Name"]?.ToString(),
+            MACAddress = obj["MACAddress"]?.ToString(),
+            Speed = Convert.ToInt64(obj["Speed"])
+        });
+        public SystemSummaryCpuInfo GetSystemSummaryCpuInfo() => GetDetailedCpuInfo().ToSystemSummaryCpuInfo();
+        public SystemSummaryRamInfo GetSystemSummaryRamInfo() => GetRamInfo().ToSystemSummaryRamInfo();
+        public SystemSummaryGpuInfo GetSystemSummaryGpuInfo() => GetGpuInfo().FirstOrDefault()?.ToSystemSummaryGpuInfo() ?? new SystemSummaryGpuInfo();
+        public SystemSummaryDiskInfo GetSystemSummaryDiskInfo() => GetDiskInfo().FirstOrDefault()?.ToSystemSummaryDiskInfo() ?? new SystemSummaryDiskInfo();
+       public TemperatureInfo GetTemperatureInfo() => GetManagementObject("MSAcpi_ThermalZoneTemperature", obj =>
+        {
+            if (obj != null && double.TryParse(obj["CurrentTemperature"]?.ToString(), out double tempKelvin))
+            {
+                return new TemperatureInfo
                 {
-                  TotalCapacity = totalCapacity / (1024 * 1024 * 1024),
-                    Modules = modules
+                   HasTemperatureData = true,
+                    TemperatureCelsius = (tempKelvin - 2732) / 10.0
                 };
-
             }
-            catch (Exception)
-            {
-                return new RamInfo();
-            }
-        }
-
-        public List<DiskInfo> GetDiskInfo()
-        {
-           try
-            {
-                var searcher = new ManagementObjectSearcher("select * from Win32_DiskDrive");
-                var diskInfos = new List<DiskInfo>();
-                
-                foreach (ManagementObject obj in searcher.Get())
-                {
-                    diskInfos.Add(new DiskInfo
-                    {
-                        Model = obj["Model"]?.ToString(),
-                        InterfaceType = obj["InterfaceType"]?.ToString(),
-                        Size = Convert.ToInt64(obj["Size"]) / (1024 * 1024 * 1024),
-                        MediaType = obj["MediaType"]?.ToString()
-                    });
-                }
-               return diskInfos;
-            }
-            catch (Exception)
-            {
-               return new List<DiskInfo>();
-            }
-        }
-
-        public List<NetworkInfo> GetNetworkInfo()
+            return new TemperatureInfo { HasTemperatureData = false };
+        }, "root\\WMI");
+        
+       private T GetManagementObject<T>(string query, Func<ManagementObject, T> mapper, string scope = null)
         {
             try
             {
-                var searcher = new ManagementObjectSearcher("select * from Win32_NetworkAdapter where NetEnabled = true");
-                var networkInfos = new List<NetworkInfo>();
+                using var searcher = new ManagementObjectSearcher(scope ?? string.Empty, $"SELECT * FROM {query}");
+               return searcher.Get().Cast<ManagementObject>().FirstOrDefault() is { } obj ? mapper(obj) : default;
 
-                foreach (ManagementObject obj in searcher.Get())
-                {
-                    networkInfos.Add(new NetworkInfo
-                    {
-                        Name = obj["Name"]?.ToString(),
-                        MACAddress = obj["MACAddress"]?.ToString(),
-                        Speed = Convert.ToInt64(obj["Speed"])
-                    });
-                }
-                return networkInfos;
             }
+           catch (Exception )
+            {
+                return default;
+            }
+        }
+       
+        private T GetManagementObject<T>(string query, Func<ManagementObjectCollection, T> mapper, string scope = null)
+       {
+            try
+           {
+                using var searcher = new ManagementObjectSearcher(scope ?? string.Empty, $"SELECT * FROM {query}");
+               return mapper(searcher.Get());
+
+           }
             catch (Exception)
-            {
-               return new List<NetworkInfo>();
-            }
-        }
-
-        public SystemSummaryCpuInfo GetSystemSummaryCpuInfo()
-        {
-             var cpuInfo = GetDetailedCpuInfo();
-            return new SystemSummaryCpuInfo
-            {
-               Name = cpuInfo.Name,
-               NumberOfCores = cpuInfo.NumberOfCores,
-               NumberOfLogicalProcessors = cpuInfo.NumberOfLogicalProcessors
-            };
-        }
-
-        public SystemSummaryRamInfo GetSystemSummaryRamInfo()
-        {
-            var ramInfo = GetRamInfo();
-           return new SystemSummaryRamInfo
            {
-               TotalRam = ramInfo.TotalCapacity
-           };
-        }
-
-        public SystemSummaryGpuInfo GetSystemSummaryGpuInfo()
-        {
-            var gpuInfo = GetGpuInfo().FirstOrDefault();
-            return gpuInfo == null ? new SystemSummaryGpuInfo() : new SystemSummaryGpuInfo
-            {
-                Name = gpuInfo.Name,
-                AdapterRAM = gpuInfo.AdapterRAM
-            };
-        }
-
-        public SystemSummaryDiskInfo GetSystemSummaryDiskInfo()
-        {
-           var diskInfo = GetDiskInfo().FirstOrDefault();
-           return diskInfo == null ? new SystemSummaryDiskInfo() : new SystemSummaryDiskInfo
-           {
-               Model = diskInfo.Model,
-                Size = diskInfo.Size
-           };
-        }
-
-
-        public TemperatureInfo GetTemperatureInfo()
+              return default;
+           }
+       }
+        private List<T> GetManagementObjects<T>(string query, Func<ManagementObject, T> mapper,string scope = null)
         {
             try
             {
-                var searcher = new ManagementObjectSearcher("root\\WMI", "SELECT * FROM MSAcpi_ThermalZoneTemperature");
-                var obj = searcher.Get().Cast<ManagementObject>().FirstOrDefault();
-                
-                if (obj != null)
-                {
-                    double tempKelvin = Convert.ToDouble(obj["CurrentTemperature"]);
-                    double tempCelsius = (tempKelvin - 2732) / 10.0;
-                    return new TemperatureInfo
-                    {
-                        HasTemperatureData = true,
-                        TemperatureCelsius = tempCelsius
-                    };
-                }
-
-                return new TemperatureInfo { HasTemperatureData = false };
+               using var searcher = new ManagementObjectSearcher(scope ?? string.Empty, $"SELECT * FROM {query}");
+               return searcher.Get().Cast<ManagementObject>().Select(mapper).ToList();
             }
-            catch (Exception)
-            {
-               return new TemperatureInfo {HasTemperatureData = false};
-            }
+           catch (Exception)
+           {
+               return new List<T>();
+           }
         }
     }
     
@@ -798,6 +630,13 @@ namespace System.Resources.Control
         public string Architecture { get; set; }
         public string ProcessorType { get; set; }
         public string Status { get; set; }
+        
+        public SystemSummaryCpuInfo ToSystemSummaryCpuInfo() => new SystemSummaryCpuInfo
+        {
+            Name = Name,
+            NumberOfCores = NumberOfCores,
+            NumberOfLogicalProcessors = NumberOfLogicalProcessors,
+        };
     }
 
 
@@ -807,12 +646,23 @@ namespace System.Resources.Control
         public string AdapterRAM { get; set; }
         public string DriverVersion { get; set; }
         public string VideoProcessor { get; set; }
+        
+        public SystemSummaryGpuInfo ToSystemSummaryGpuInfo() => new SystemSummaryGpuInfo
+        {
+            Name = Name,
+            AdapterRAM = AdapterRAM,
+        };
     }
     
     public class RamInfo
     {
         public long TotalCapacity { get; set; }
         public List<RamModuleInfo> Modules { get; set; }
+        
+        public SystemSummaryRamInfo ToSystemSummaryRamInfo() => new SystemSummaryRamInfo
+        {
+            TotalRam = TotalCapacity,
+        };
     }
 
     public class RamModuleInfo
@@ -829,6 +679,11 @@ namespace System.Resources.Control
         public string InterfaceType { get; set; }
         public long Size { get; set; }
         public string MediaType { get; set; }
+        public SystemSummaryDiskInfo ToSystemSummaryDiskInfo() => new SystemSummaryDiskInfo
+        {
+            Model = Model,
+            Size = Size,
+        };
     }
 
     public class NetworkInfo
